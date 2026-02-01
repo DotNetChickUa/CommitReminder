@@ -7,6 +7,6 @@ namespace CommitReminder
         private readonly CommitReminderPackage _package;
         public InfoBarEvents(CommitReminderPackage package) => _package = package;
         public void OnActionItemClicked(IVsInfoBarUIElement element, IVsInfoBarActionItem actionItem) { }
-        public void OnClosed(IVsInfoBarUIElement element) => _package.ClearNotification();
+        public void OnClosed(IVsInfoBarUIElement element) => _package.ResetNotification();
     }
 }

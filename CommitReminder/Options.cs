@@ -6,7 +6,7 @@ namespace CommitReminder
     public class Options : DialogPage, INotifyPropertyChanged
     {
         private bool _enableReminder = true;
-        private int _reminderIntervalSeconds = 600;
+        private int _reminderIntervalMinutes = 60;
 
         [Category("Commit Reminder")]
         [DisplayName("Enable reminder")]
@@ -25,17 +25,17 @@ namespace CommitReminder
         }
 
         [Category("Commit Reminder")]
-        [DisplayName("Reminder interval (seconds)")]
-        [DefaultValue(600)]
-        public int ReminderIntervalSeconds
+        [DisplayName("Reminder interval (minutes)")]
+        [DefaultValue(60)]
+        public int ReminderIntervalMinutes
         {
-            get => _reminderIntervalSeconds;
+            get => _reminderIntervalMinutes;
             set
             {
-                if (_reminderIntervalSeconds != value)
+                if (_reminderIntervalMinutes != value)
                 {
-                    _reminderIntervalSeconds = value;
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ReminderIntervalSeconds)));
+                    _reminderIntervalMinutes = value;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ReminderIntervalMinutes)));
                 }
             }
         }

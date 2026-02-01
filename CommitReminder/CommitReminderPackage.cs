@@ -29,13 +29,11 @@ namespace CommitReminder
     [Guid(PackageGuidString)]
     public sealed class CommitReminderPackage : AsyncPackage
     {
-        public const string PackageGuidString = "A1B2C3D4-7E8F-4B9A-9D77-112233445566";
+        public const string PackageGuidString = "842c0375-2cc2-4224-81a3-cf2468fc7f46";
 
         private Timer _timer;
         private IVsInfoBarUIElement _infoBar;
-        private IGitExt _gitExt;
         private Options _options;
-        private bool _hasUncommittedChanges;
 
         protected override async Task InitializeAsync(
             CancellationToken cancellationToken,
@@ -45,27 +43,41 @@ namespace CommitReminder
 
             _options = (Options)GetDialogPage(typeof(Options));
             _options.PropertyChanged += Options_PropertyChanged;
-            
-            _gitExt = (IGitExt)await GetServiceAsync(typeof(IGitExt));
-            if (_gitExt != null)
-            {
-                _gitExt.PropertyChanged += _gitExt_PropertyChanged;
-            }
 
             StartTimer();
         }
 
-        private void _gitExt_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        private bool HasDirtyFiles(IGitRepositoryInfo repo)
         {
-            var repo = _gitExt?.ActiveRepositories.FirstOrDefault();
-            if (repo is null)
+            try
             {
-                _hasUncommittedChanges = false;
-            }
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "git",
+                    Arguments = "status --porcelain",
+                    WorkingDirectory = repo.RepositoryPath,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                };
 
-            if (e.PropertyName == nameof(IGitExt.ActiveRepositories))
+                using (var process = System.Diagnostics.Process.Start(processInfo))
+                {
+                    if (process is null)
+                    {
+                        return false;
+                    }
+
+                    var output = process.StandardOutput.ReadToEnd();
+                    process.WaitForExit();
+
+                    // If there's any output, there are uncommitted changes
+                    return !string.IsNullOrWhiteSpace(output);
+                }
+            }
+            catch
             {
-                _hasUncommittedChanges = true;
+                return false;
             }
         }
 
@@ -86,7 +98,7 @@ namespace CommitReminder
                 return;
             }
 
-            var interval = TimeSpan.FromMinutes(Math.Max(1, _options.ReminderIntervalSeconds));
+            var interval = TimeSpan.FromMinutes(Math.Max(1, _options.ReminderIntervalMinutes));
 
             _timer?.Dispose();
             _timer = new Timer(_ => CheckAndNotify(), null, interval, interval);
@@ -98,7 +110,7 @@ namespace CommitReminder
             {
                 await JoinableTaskFactory.SwitchToMainThreadAsync();
 
-                if (!_hasUncommittedChanges)
+                if (!HasUncommittedChanges())
                 {
                     ClearNotification();
                     return;
@@ -106,6 +118,19 @@ namespace CommitReminder
 
                 ShowNotification();
             });
+        }
+
+        private bool HasUncommittedChanges()
+        {
+            var gitExt = (IGitExt)GetService(typeof(IGitExt));
+
+            var repos = gitExt?.ActiveRepositories;
+            if (repos == null || repos.Count == 0)
+            {
+                return false;
+            }
+
+            return repos.Any(HasDirtyFiles);
         }
 
         private void ShowNotification()
@@ -141,6 +166,11 @@ namespace CommitReminder
             ThreadHelper.ThrowIfNotOnUIThread();
 
             _infoBar?.Close();
+            ResetNotification();
+        }
+
+        internal void ResetNotification()
+        {
             _infoBar = null;
         }
 
