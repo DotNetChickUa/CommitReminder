@@ -33,7 +33,9 @@ namespace CommitReminder
 
         private Timer _timer;
         private IVsInfoBarUIElement _infoBar;
+        private IGitExt _gitExt;
         private Options _options;
+        private bool _hasUncommittedChanges;
 
         protected override async Task InitializeAsync(
             CancellationToken cancellationToken,
@@ -43,13 +45,32 @@ namespace CommitReminder
 
             _options = (Options)GetDialogPage(typeof(Options));
             _options.PropertyChanged += Options_PropertyChanged;
+            
+            _gitExt = (IGitExt)await GetServiceAsync(typeof(IGitExt));
+            if (_gitExt != null)
+            {
+                _gitExt.PropertyChanged += _gitExt_PropertyChanged;
+            }
 
             StartTimer();
         }
 
+        private void _gitExt_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            var repo = _gitExt?.ActiveRepositories.FirstOrDefault();
+            if (repo is null)
+            {
+                _hasUncommittedChanges = false;
+            }
+
+            if (e.PropertyName == nameof(IGitExt.ActiveRepositories))
+            {
+                _hasUncommittedChanges = true;
+            }
+        }
+
         private void Options_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            // Hot-reload: restart timer immediately when settings change
             StartTimer();
         }
 
@@ -65,7 +86,7 @@ namespace CommitReminder
                 return;
             }
 
-            var interval = TimeSpan.FromSeconds(Math.Max(10, _options.ReminderIntervalSeconds));
+            var interval = TimeSpan.FromMinutes(Math.Max(1, _options.ReminderIntervalSeconds));
 
             _timer?.Dispose();
             _timer = new Timer(_ => CheckAndNotify(), null, interval, interval);
@@ -77,7 +98,7 @@ namespace CommitReminder
             {
                 await JoinableTaskFactory.SwitchToMainThreadAsync();
 
-                if (!HasUncommittedChanges())
+                if (!_hasUncommittedChanges)
                 {
                     ClearNotification();
                     return;
@@ -87,29 +108,21 @@ namespace CommitReminder
             });
         }
 
-        private bool HasUncommittedChanges()
-        {
-            try
-            {
-                var gitExt = GetService(typeof(IGitExt)) as IGitExt;
-                var repo = gitExt?.ActiveRepositories.FirstOrDefault();
-                return repo?.HasUncommittedChanges == true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
         private void ShowNotification()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            if (_infoBar != null) return;
+            if (_infoBar != null)
+            {
+                return;
+            }
 
             var factory = GetService(typeof(SVsInfoBarUIFactory)) as IVsInfoBarUIFactory;
             var shell = GetService(typeof(SVsShell)) as IVsShell;
-            if (factory == null || shell == null) return;
+            if (factory == null || shell == null)
+            {
+                return;
+            }
 
             var model = new InfoBarModel(
                 new[] { new InfoBarTextSpan("Commit Reminder: you have uncommitted changes") },
@@ -123,8 +136,10 @@ namespace CommitReminder
             (hostObj as IVsInfoBarHost)?.AddInfoBar(_infoBar);
         }
 
-        private void ClearNotification()
+        internal void ClearNotification()
         {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
             _infoBar?.Close();
             _infoBar = null;
         }
@@ -133,58 +148,12 @@ namespace CommitReminder
         {
             _timer?.Dispose();
             ClearNotification();
-            if (_options != null) _options.PropertyChanged -= Options_PropertyChanged;
+            if (_options != null)
+            {
+                _options.PropertyChanged -= Options_PropertyChanged;
+            }
+
             base.Dispose(disposing);
-        }
-
-        [ClassInterface(ClassInterfaceType.AutoDual)]
-        [ComVisible(true)]
-        public class Options : DialogPage, INotifyPropertyChanged
-        {
-            private bool _enableReminder = true;
-            private int _reminderIntervalSeconds = 600;
-
-            [Category("Commit Reminder")]
-            [DisplayName("Enable reminder")]
-            [DefaultValue(true)]
-            public bool EnableReminder
-            {
-                get => _enableReminder;
-                set
-                {
-                    if (_enableReminder != value)
-                    {
-                        _enableReminder = value;
-                        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(EnableReminder)));
-                    }
-                }
-            }
-
-            [Category("Commit Reminder")]
-            [DisplayName("Reminder interval (seconds)")]
-            [DefaultValue(600)]
-            public int ReminderIntervalSeconds
-            {
-                get => _reminderIntervalSeconds;
-                set
-                {
-                    if (_reminderIntervalSeconds != value)
-                    {
-                        _reminderIntervalSeconds = value;
-                        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ReminderIntervalSeconds)));
-                    }
-                }
-            }
-
-            public event PropertyChangedEventHandler PropertyChanged;
-        }
-
-        private sealed class InfoBarEvents : IVsInfoBarUIEvents
-        {
-            private readonly CommitReminderPackage _package;
-            public InfoBarEvents(CommitReminderPackage package) => _package = package;
-            public void OnActionItemClicked(IVsInfoBarUIElement element, IVsInfoBarActionItem actionItem) { }
-            public void OnClosed(IVsInfoBarUIElement element) => _package._infoBar = null;
         }
     }
 }
