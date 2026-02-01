@@ -83,6 +83,7 @@ namespace CommitReminder
 
         private void Options_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
+            ThreadHelper.ThrowIfNotOnUIThread();
             StartTimer();
         }
 
@@ -177,6 +178,8 @@ namespace CommitReminder
         protected override void Dispose(bool disposing)
         {
             _timer?.Dispose();
+            ThreadHelper.ThrowIfNotOnUIThread();
+
             ClearNotification();
             if (_options != null)
             {
