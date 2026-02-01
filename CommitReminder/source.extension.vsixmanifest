@@ -4,7 +4,6 @@
         <Identity Id="CommitReminder.8ab36b24-d709-4c6b-aae2-999ff17313d0" Version="1.0" Language="en-US" Publisher="DotnetChickUa" />
         <DisplayName>CommitReminder</DisplayName>
         <Description xml:space="preserve">Reminds you to commit your changes.</Description>
-        <Preview>true</Preview>
     </Metadata>
     <Installation AllUsers="true">
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[18.0, )">
