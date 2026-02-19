@@ -3,6 +3,10 @@
 ## About
 CommitReminder is a Visual Studio extension that helps you keep a steady commit habit by reminding you when it has been a while since your last commit. It runs inside the IDE and surfaces a lightweight reminder so you can commit or note progress without leaving your workflow.
 
+## Release
+
+[Download](CommitReminder.vsix)
+
 ## Screenshots
 
 ### Reminder UI
