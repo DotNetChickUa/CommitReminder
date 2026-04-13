@@ -15,7 +15,7 @@ CommitReminder is a Visual Studio extension that helps you keep a steady commit 
 ### Options page
 ![Options page](images/options.png)
 
-## Guide for Developers
+## How to use
 
 ### Prerequisites
 - Visual Studio 2026
@@ -26,10 +26,8 @@ CommitReminder is a Visual Studio extension that helps you keep a steady commit 
 1. Open the solution in Visual Studio.
 2. Build the solution.
 3. Start debugging to launch the experimental instance of Visual Studio.
-
-### Debugging Notes
-- The extension loads into the experimental instance.
-- Clean and rebuild if the extension fails to load.
+    - The extension loads into the experimental instance.
+    - Clean and rebuild if the extension fails to load.
 
 ### Project Structure
 - `CommitReminderPackage.cs`: Package initialization and registration.
@@ -40,8 +38,3 @@ CommitReminder is a Visual Studio extension that helps you keep a steady commit 
 1. Update the version in the VSIX manifest as needed.
 2. Build the project in Release configuration.
 3. The VSIX will be created in the output directory.
-
-### Contributing
-- Keep changes focused and scoped to a single feature or fix.
-- Update this README if behavior or setup steps change.
-
